@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RUGSCAN — $RUG / SOL — MoonRug Chart</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        display: ['Space Grotesk', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      colors: {
+        ink: '#070b12',
+        panel: '#0d1420',
+        card: '#111a29',
+        line: '#1d2a3f',
+        rug: '#f23645',
+        pump: '#22e584',
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  body { background: #070b12; font-family: 'Inter', sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #0d1420; }
+  ::-webkit-scrollbar-thumb { background: #24344f; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #31456a; }
+
+  /* ticker tape */
+  @keyframes tape { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+  .tape-track { animation: tape 28s linear infinite; }
+  .tape-track:hover { animation-play-state: paused; }
+
+  /* rug banner pulse */
+  @keyframes rugPulse {
+    0%, 100% { background: linear-gradient(90deg, #3d0a0f, #5c0e15, #3d0a0f); }
+    50% { background: linear-gradient(90deg, #5c0e15, #8a1420, #5c0e15); }
+  }
+  .rug-banner { animation: rugPulse 2.2s ease-in-out infinite; }
+  @keyframes blinkDot { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+  .live-dot { animation: blinkDot 1.1s ease-in-out infinite; }
+
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .tx-row { animation: slideIn .3s ease-out; }
+
+  @keyframes crashFlash { 0% { box-shadow: 0 0 0 0 rgba(242,54,69,.55); } 100% { box-shadow: 0 0 0 22px rgba(242,54,69,0); } }
+  .crash-flash { animation: crashFlash 1.6s ease-out infinite; }
+
+  @keyframes floatDown { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+  .float-down { animation: floatDown 2.4s ease-in-out infinite; }
+
+  .candle-glow { filter: drop-shadow(0 0 14px rgba(242,54,69,.35)); }
+  .num { font-variant-numeric: tabular-nums; }
+  .tf-active { background: #22e584 !important; color: #04120a !important; font-weight: 700; }
+  canvas { cursor: crosshair; }
+  .glass { background: rgba(17,26,41,.82); backdrop-filter: blur(14px); }
+</style>
+</head>
+<body class="text-slate-200 min-h-screen">
+
+<!-- ══════════ TICKER TAPE ══════════ -->
+<div class="overflow-hidden border-b border-line bg-panel/80 py-1.5 select-none">
+  <div class="tape-track flex gap-10 whitespace-nowrap w-max font-mono text-xs" id="tape"></div>
+</div>
+
+<!-- ══════════ NAV ══════════ -->
+<header class="sticky top-0 z-40 glass border-b border-line">
+  <div class="max-w-[1500px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rug to-orange-500 grid place-items-center font-display font-700 text-xl shadow-lg shadow-rug/30">📉</div>
+      <div>
+        <div class="font-display font-700 text-lg leading-none tracking-tight">RUG<span class="text-rug">SCAN</span></div>
+        <div class="text-[10px] text-slate-500 font-mono">meme chart terminal</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-1.5 ml-4 text-xs font-mono">
+      <span class="px-2.5 py-1 rounded-lg bg-pump/10 text-pump border border-pump/25">● SOL</span>
+      <span class="px-2.5 py-1 rounded-lg bg-card border border-line text-slate-400">ETH</span>
+      <span class="px-2.5 py-1 rounded-lg bg-card border border-line text-slate-400">BSC</span>
+      <span class="px-2.5 py-1 rounded-lg bg-card border border-line text-slate-400">BASE</span>
+    </div>
+    <div class="flex-1"></div>
+    <div class="hidden sm:flex items-center gap-2 bg-ink border border-line rounded-xl px-3 py-2 w-72 focus-within:border-pump/50 transition">
+      <span class="text-slate-500 text-sm">🔍</span>
+      <input placeholder="Search pairs, tokens..." class="bg-transparent outline-none text-sm w-full placeholder:text-slate-600" />
+      <kbd class="text-[10px] font-mono text-slate-500 bg-card px-1.5 py-0.5 rounded">/</kbd>
+    </div>
+    <a href="wallet.html" class="text-xs font-semibold px-3 py-2 rounded-xl bg-card border border-line hover:border-pump/50 transition">👛 Wallet</a>
+    <button onclick="toast('Wallet connection disabled — this token is dead ☠️')" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-gradient-to-r from-pump to-emerald-400 text-emerald-950 hover:brightness-110 transition shadow-lg shadow-pump/20">Connect Wallet</button>
+  </div>
+</header>
+
+<!-- ══════════ RUG ALERT BANNER ══════════ -->
+<div class="rug-banner border-b border-rug/40">
+  <div class="max-w-[1500px] mx-auto px-4 py-2.5 flex items-center gap-3 text-sm flex-wrap">
+    <span class="live-dot w-2.5 h-2.5 rounded-full bg-rug shadow-[0_0_10px_#f23645]"></span>
+    <span class="font-display font-700 tracking-wide text-red-100">⚠️ RUGPULL DETECTED</span>
+    <span class="text-red-200/80 text-xs font-mono hidden md:inline">dev wallet <span class="text-white font-bold">7xK9…pump</span> removed 100% of liquidity + dumped 184M $RUG</span>
+    <span class="text-red-200/80 text-xs font-mono md:hidden">LP removed • dev dumped</span>
+    <div class="flex-1"></div>
+    <span class="font-mono text-xs text-red-200/90">rugged <span id="rugTimer" class="font-bold text-white num">00:00:00</span> ago</span>
+  </div>
+</div>
+
+<main class="max-w-[1500px] mx-auto px-4 py-4 space-y-4">
+
+  <!-- ══════════ COIN HEADER ══════════ -->
+  <section class="bg-panel border border-line rounded-2xl p-4 flex flex-wrap items-center gap-4">
+    <div class="relative">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-300 via-orange-400 to-rug grid place-items-center text-3xl shadow-lg shadow-orange-500/20">🧸</div>
+      <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-ink border border-line grid place-items-center text-xs">◎</div>
+    </div>
+    <div class="min-w-[180px]">
+      <div class="flex items-center gap-2">
+        <h1 class="font-display font-700 text-xl">MoonRug <span class="text-slate-500 font-body font-600 text-sm">$RUG / SOL</span></h1>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rug/15 text-rug border border-rug/30 font-bold">☠️ RUGGED</span>
+      </div>
+      <div class="flex items-baseline gap-2 mt-0.5">
+        <span id="livePrice" class="font-mono font-700 text-2xl text-rug num">$0.00000412</span>
+        <span id="liveChange" class="font-mono text-sm font-bold text-rug num">−99.41%</span>
+        <span class="text-[11px] text-slate-500 font-mono">24h</span>
+      </div>
+    </div>
+    <div class="hidden lg:block w-px h-12 bg-line"></div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-x-8 gap-y-2 text-sm flex-1">
+      <div><div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Mkt Cap</div><div class="font-mono font-bold num" id="statMcap">$1,728</div></div>
+      <div><div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Liquidity</div><div class="font-mono font-bold text-rug num">$0.00 <span class="text-[10px]">🔥 burned? no — stolen</span></div></div>
+      <div><div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">FDV</div><div class="font-mono font-bold num">$4,120</div></div>
+      <div><div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Holders <span class="text-pump">↓</span></div><div class="font-mono font-bold num" id="statHolders">3,412 <span class="text-rug text-xs">−61%</span></div></div>
+      <div><div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Buy / Sell Tax</div><div class="font-mono font-bold num">0% / <span class="text-rug">99%</span> 🍯</div></div>
+      <div><div class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Pair Age</div><div class="font-mono font-bold num">2d 4h</div></div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="replayRug()" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-rug/15 border border-rug/40 text-red-200 hover:bg-rug/25 transition">↻ Replay Rug</button>
+      <button onclick="toast('Link copied — warn your friends 📋')" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-card border border-line hover:border-slate-500 transition">🔗 Share</button>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+    <!-- ══════════ CHART ══════════ -->
+    <section class="xl:col-span-2 bg-panel border border-line rounded-2xl overflow-hidden">
+      <div class="flex items-center gap-2 px-4 pt-3 flex-wrap">
+        <div class="flex gap-1 text-xs font-mono" id="tfBar">
+          <button data-tf="1m" class="tf-btn px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition">1m</button>
+          <button data-tf="5m" class="tf-btn px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition tf-active">5m</button>
+          <button data-tf="15m" class="tf-btn px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition">15m</button>
+          <button data-tf="1H" class="tf-btn px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition">1H</button>
+          <button data-tf="4H" class="tf-btn px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition">4H</button>
+        </div>
+        <div class="flex-1"></div>
+        <div id="ohlc" class="font-mono text-[11px] text-slate-400 num hidden md:block">O — H — L — C — <span class="text-slate-500">Vol —</span></div>
+        <span class="flex items-center gap-1.5 text-[11px] font-mono text-rug font-bold"><span class="live-dot w-2 h-2 rounded-full bg-rug"></span>LIVE</span>
+      </div>
+      <div class="relative">
+        <canvas id="chart" class="w-full block" style="height:440px"></canvas>
+        <!-- floating markers -->
+        <div id="athBadge" class="absolute hidden sm:flex items-center gap-1.5 text-[11px] font-mono font-bold bg-pump/15 border border-pump/40 text-pump px-2.5 py-1 rounded-lg backdrop-blur" style="top:8%;right:24%">🚀 ATH $0.000698</div>
+        <div id="rugBadge" class="absolute flex items-center gap-1.5 text-[11px] font-mono font-bold bg-rug/20 border border-rug/50 text-red-200 px-2.5 py-1 rounded-lg backdrop-blur crash-flash" style="top:26%;right:15%">💀 DEV REMOVED LP −99.4%</div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-px bg-line border-t border-line text-center">
+        <div class="bg-panel py-2.5"><div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">ATH</div><div class="font-mono text-sm font-bold text-pump num">$0.000698</div></div>
+        <div class="bg-panel py-2.5"><div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">From ATH</div><div class="font-mono text-sm font-bold text-rug num">−99.41%</div></div>
+        <div class="bg-panel py-2.5"><div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">24h Volume</div><div class="font-mono text-sm font-bold num" id="statVol">$2.41M</div></div>
+        <div class="bg-panel py-2.5"><div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Buys / Sells</div><div class="font-mono text-sm font-bold num"><span class="text-pump">412</span> / <span class="text-rug">8,904</span></div></div>
+      </div>
+    </section>
+
+    <!-- ══════════ TRADE PANEL ══════════ -->
+    <aside class="bg-panel border border-line rounded-2xl p-4 space-y-4 h-fit">
+      <div class="grid grid-cols-2 gap-1 bg-ink rounded-xl p-1 border border-line">
+        <button id="buyTab" onclick="setSide('buy')" class="py-2.5 rounded-lg font-display font-700 text-sm bg-pump text-emerald-950 transition">BUY</button>
+        <button id="sellTab" onclick="setSide('sell')" class="py-2.5 rounded-lg font-display font-700 text-sm text-slate-400 hover:text-white transition">SELL</button>
+      </div>
+
+      <div class="bg-rug/10 border border-rug/40 rounded-xl p-3 flex gap-2.5 items-start">
+        <span class="text-xl">🚨</span>
+        <p class="text-xs text-red-200/90 leading-relaxed"><span class="font-bold text-red-100">Honeypot warning:</span> sells currently fail with 99% tax. Only the dev wallet can sell. Do NOT buy this token.</p>
+      </div>
+
+      <div>
+        <div class="flex justify-between text-xs mb-1.5"><span class="text-slate-400 font-semibold">You pay (SOL)</span><span class="font-mono text-slate-500 num">Bal: 0.00</span></div>
+        <div class="flex items-center bg-ink border border-line rounded-xl px-3 focus-within:border-pump/50 transition">
+          <input id="payAmt" type="number" value="1" min="0" class="bg-transparent outline-none font-mono font-bold text-lg py-3 w-full num" oninput="calcReceive()" />
+          <span class="font-bold text-sm text-slate-300 ml-2">◎ SOL</span>
+        </div>
+        <div class="grid grid-cols-4 gap-1.5 mt-2">
+          <button onclick="setAmt(0.5)" class="text-xs font-mono py-1.5 rounded-lg bg-card border border-line hover:border-pump/50 transition">0.5</button>
+          <button onclick="setAmt(1)" class="text-xs font-mono py-1.5 rounded-lg bg-card border border-line hover:border-pump/50 transition">1</button>
+          <button onclick="setAmt(5)" class="text-xs font-mono py-1.5 rounded-lg bg-card border border-line hover:border-pump/50 transition">5</button>
+          <button onclick="setAmt(10)" class="text-xs font-mono py-1.5 rounded-lg bg-card border border-line hover:border-pump/50 transition">MAX</button>
+        </div>
+      </div>
+
+      <div class="flex justify-center -my-1"><div class="w-8 h-8 rounded-full bg-card border border-line grid place-items-center text-sm float-down">⬇️</div></div>
+
+      <div>
+        <div class="flex justify-between text-xs mb-1.5"><span class="text-slate-400 font-semibold">You receive (est.)</span><span class="font-mono text-slate-500">≈ $0.00</span></div>
+        <div class="bg-ink border border-line rounded-xl px-3 py-3 font-mono font-bold text-lg num text-slate-200" id="receiveAmt">243,902 $RUG</div>
+      </div>
+
+      <div class="space-y-1.5 text-xs font-mono">
+        <div class="flex justify-between"><span class="text-slate-500">Price impact</span><span class="text-rug font-bold">−99.99%</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Slippage</span><span class="text-slate-300">50% (lol, still fails)</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Min. received</span><span class="text-slate-300">0 $RUG</span></div>
+      </div>
+
+      <button onclick="tryTrade()" id="tradeBtn" class="w-full py-3.5 rounded-xl font-display font-700 bg-gradient-to-r from-pump to-emerald-400 text-emerald-950 hover:brightness-110 active:scale-[.99] transition shadow-lg shadow-pump/20">BUY $RUG</button>
+
+      <!-- position card -->
+      <div class="bg-ink border border-line rounded-xl p-3">
+        <div class="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2">Your position (demo bagholder)</div>
+        <div class="flex justify-between text-sm"><span class="text-slate-400">Bought</span><span class="font-mono num">$500.00 @ ATH</span></div>
+        <div class="flex justify-between text-sm"><span class="text-slate-400">Now worth</span><span class="font-mono text-rug font-bold num" id="bagValue">$2.94</span></div>
+        <div class="mt-2 h-2 rounded-full bg-card overflow-hidden"><div class="h-full w-[0.6%] bg-gradient-to-r from-rug to-orange-500 rounded-full"></div></div>
+        <div class="text-right text-[11px] font-mono text-rug font-bold mt-1 num">−99.41% 💀</div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <!-- ══════════ TRANSACTIONS ══════════ -->
+    <section class="xl:col-span-2 bg-panel border border-line rounded-2xl overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-line">
+        <h2 class="font-display font-700">Live trades</h2>
+        <span class="flex items-center gap-1.5 text-[11px] font-mono text-rug font-bold"><span class="live-dot w-2 h-2 rounded-full bg-rug"></span>STREAMING</span>
+        <div class="flex-1"></div>
+        <span class="text-[11px] font-mono text-slate-500">mostly <span class="text-rug font-bold">dumps</span> + failed sells</span>
+      </div>
+      <div class="grid grid-cols-6 text-[10px] uppercase tracking-wider text-slate-500 font-bold px-4 py-2 border-b border-line font-mono">
+        <span class="col-span-1">Type</span><span class="col-span-1 text-right">SOL</span><span class="col-span-1 text-right">$RUG</span><span class="col-span-1 text-right">Price</span><span class="col-span-1 text-right hidden sm:block">Wallet</span><span class="col-span-1 text-right">Time</span>
+      </div>
+      <div id="txFeed" class="divide-y divide-line/60 max-h-[340px] overflow-y-auto"></div>
+    </section>
+
+    <!-- ══════════ HOLDERS ══════════ -->
+    <section class="bg-panel border border-line rounded-2xl overflow-hidden h-fit">
+      <div class="px-4 py-3 border-b border-line flex items-center gap-2">
+        <h2 class="font-display font-700">Top holders</h2>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rug/15 text-rug border border-rug/30 font-bold">SUS</span>
+      </div>
+      <div class="p-4 space-y-3 text-sm" id="holders"></div>
+      <div class="mx-4 mb-4 bg-ink border border-line rounded-xl p-3 text-xs space-y-1.5 font-mono">
+        <div class="text-slate-500 uppercase tracking-wider text-[10px] font-bold">Token safety</div>
+        <div class="flex justify-between"><span>❌ Mint authority</span><span class="text-rug font-bold">ENABLED</span></div>
+        <div class="flex justify-between"><span>❌ Freeze authority</span><span class="text-rug font-bold">ENABLED</span></div>
+        <div class="flex justify-between"><span>❌ LP burned</span><span class="text-rug font-bold">NO — REMOVED</span></div>
+        <div class="flex justify-between"><span>❌ Contract verified</span><span class="text-rug font-bold">NO</span></div>
+        <div class="flex justify-between"><span>⚠️ Dev holding at ATH</span><span class="text-amber-400 font-bold">43%</span></div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="text-center text-xs text-slate-600 font-mono pb-8 pt-2">
+    RUGSCAN demo — simulated data for educational / entertainment purposes. Not financial advice. Always DYOR. 🫡
+  </footer>
+</main>
+
+<!-- toast -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-xl bg-card border border-line text-sm font-semibold shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-50"></div>
+
+<script>
+/* ═══════════════ STATE ═══════════════ */
+const RUG_PRICE = 0.00000412;
+const ATH = 0.000698;
+let livePrice = RUG_PRICE;
+let side = 'buy';
+let candles = [];
+let rugMoment = 0; // x index of the dump candle
+
+/* ═══════════════ TICKER TAPE ═══════════════ */
+const tapeItems = [
+  ['SOL', '$142.18', '+2.4%', true], ['$RUG', '$0.0000041', '−99.4%', false],
+  ['BTC', '$97,431', '+1.1%', true], ['BONK', '$0.000021', '+8.2%', true],
+  ['WIF', '$2.14', '−3.1%', false], ['POPCAT', '$0.82', '+5.6%', true],
+  ['$RUG', 'LP REMOVED 💀', '−100%', false], ['JUP', '$0.91', '+1.8%', true],
+  ['PYTH', '$0.34', '−0.9%', false], ['$RUG', 'DEV DUMPED', '−99.4%', false],
+];
+document.getElementById('tape').innerHTML = [...tapeItems, ...tapeItems].map(([s, p, c, up]) =>
+  `<span class="flex items-center gap-2"><span class="text-slate-300 font-bold">${s}</span><span class="text-slate-500">${p}</span><span class="${up ? 'text-pump' : 'text-rug'}">${c}</span></span>`
+).join('<span class="text-slate-700">/</span>');
+
+/* ═══════════════ CANDLE DATA — the classic rug shape ═══════════════ */
+function genCandles() {
+  const out = [];
+  let p = 0.000012; // stealth launch
+  let t = Date.now() - 190 * 5 * 60 * 1000;
+  const push = (o, h, l, c, v) => { out.push({ t, o, h, l, c, v }); t += 5 * 60 * 1000; };
+
+  // Phase 1: slow accumulation (0-60)
+  for (let i = 0; i < 60; i++) {
+    const drift = (Math.random() - 0.42) * 0.000004;
+    const o = p, c = Math.max(0.000005, p + drift);
+    push(o, Math.max(o, c) + Math.random() * 0.000002, Math.min(o, c) - Math.random() * 0.000002, c, 2 + Math.random() * 8);
+    p = c;
+  }
+  // Phase 2: influencer pump (60-110) — parabolic
+  for (let i = 0; i < 50; i++) {
+    const accel = 1 + (i / 50) * 2.4;
+    const o = p, c = p + (Math.random() * 0.00002 + 0.000006) * accel;
+    push(o, c + Math.random() * 0.000012, o - Math.random() * 0.000004, c, 20 + Math.random() * 60 + i * 2);
+    p = c;
+  }
+  // Phase 3: euphoria top wicks (110-128)
+  for (let i = 0; i < 18; i++) {
+    const o = p;
+    const top = ATH * (0.92 + Math.random() * 0.1);
+    const c = p + (Math.random() - 0.55) * 0.00004;
+    push(o, Math.max(top, o, c), Math.min(o, c) - Math.random() * 0.00001, Math.min(c, ATH), 120 + Math.random() * 160);
+    p = Math.min(c, ATH);
+  }
+  // Phase 4: THE RUG — liquidity removed, cliff dump (128-136)
+  rugMoment = out.length;
+  const dumpSteps = [0.55, 0.28, 0.12, 0.055, 0.028, 0.016, 0.011, 0.009];
+  dumpSteps.forEach((f, i) => {
+    const o = p, c = Math.max(ATH * f * 0.02, ATH * f * 0.02);
+    const cc = Math.max(RUG_PRICE * (3 - i * 0.3), ATH * f * 0.02 * 0.4);
+    const close = i === dumpSteps.length - 1 ? RUG_PRICE * 1.4 : cc;
+    push(o, o * 1.02, Math.min(close, o) * 0.92, close, 400 + Math.random() * 500);
+    p = close;
+  });
+  // Phase 5: dead flatline with tiny exit-liquidity bounces (136-190)
+  for (let i = 0; i < 54; i++) {
+    const o = p;
+    const bounce = Math.random() < 0.14 ? (Math.random() * 0.35 + 0.08) : (Math.random() - 0.52) * 0.1;
+    const c = Math.max(RUG_PRICE * 0.6, p * (1 + bounce * (Math.random() < 0.7 ? -1 : 1) * 0.4));
+    push(o, Math.max(o, c) * 1.05, Math.min(o, c) * 0.95, c, 1 + Math.random() * 6);
+    p = c;
+  }
+  return out;
+}
+
+/* ═══════════════ CHART RENDER ═══════════════ */
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const PAD_R = 74, PAD_B = 26, PAD_T = 14, PAD_L = 8;
+let hoverIdx = -1;
+
+function sizeCanvas() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = r.width * dpr;
+  canvas.height = 440 * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function yScale() {
+  // log-ish scale so the flatline stays visible
+  let hi = -Infinity, lo = Infinity;
+  candles.forEach(c => { hi = Math.max(hi, c.h); lo = Math.min(lo, c.l); });
+  lo = Math.min(lo, RUG_PRICE * 0.4);
+  return { hi: hi * 1.08, lo: lo * 0.9 };
+}
+function fmtP(p) {
+  if (p >= 0.01) return '$' + p.toFixed(4);
+  if (p >= 0.0001) return '$' + p.toFixed(6);
+  return '$' + p.toFixed(8);
+}
+function draw() {
+  const W = canvas.getBoundingClientRect().width, H = 440;
+  const { hi, lo } = yScale();
+  const range = hi - lo;
+  const plotW = W - PAD_R - PAD_L, plotH = H - PAD_B - PAD_T;
+  const volH = plotH * 0.18;
+  const y = v => PAD_T + (1 - (v - lo) / range) * (plotH - volH - 8);
+  const slot = plotW / candles.length;
+  const bw = Math.max(2, slot * 0.62);
+
+  ctx.clearRect(0, 0, W, H);
+  // grid
+  ctx.strokeStyle = 'rgba(29,42,63,.9)'; ctx.lineWidth = 1;
+  ctx.font = '10px JetBrains Mono'; ctx.fillStyle = '#5b6b86';
+  for (let i = 0; i <= 6; i++) {
+    const v = hi - (range * i) / 6;
+    const yy = Math.round(y(v)) + .5;
+    ctx.beginPath(); ctx.moveTo(PAD_L, yy); ctx.lineTo(W - PAD_R, yy); ctx.stroke();
+    ctx.fillText(fmtP(v), W - PAD_R + 8, yy + 3);
+  }
+  // volume bars
+  let maxV = Math.max(...candles.map(c => c.v));
+  candles.forEach((c, i) => {
+    const up = c.c >= c.o;
+    const vh = (c.v / maxV) * volH;
+    ctx.fillStyle = up ? 'rgba(34,229,132,.35)' : 'rgba(242,54,69,.5)';
+    if (i >= rugMoment && i <= rugMoment + 8) ctx.fillStyle = 'rgba(242,54,69,.85)';
+    ctx.fillRect(PAD_L + i * slot + (slot - bw) / 2, H - PAD_B - vh, bw, vh);
+  });
+  // rug zone shading
+  const rx = PAD_L + rugMoment * slot;
+  const grad = ctx.createLinearGradient(rx, 0, W - PAD_R, 0);
+  grad.addColorStop(0, 'rgba(242,54,69,.14)'); grad.addColorStop(1, 'rgba(242,54,69,.02)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(rx, PAD_T, W - PAD_R - rx, plotH);
+  ctx.strokeStyle = 'rgba(242,54,69,.7)'; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(rx, PAD_T); ctx.lineTo(rx, H - PAD_B); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // candles
+  candles.forEach((c, i) => {
+    const up = c.c >= c.o;
+    const x = PAD_L + i * slot + slot / 2;
+    const isDump = i >= rugMoment && i <= rugMoment + 9;
+    ctx.strokeStyle = up ? '#22e584' : '#f23645';
+    if (isDump) { ctx.strokeStyle = '#ff5d6b'; ctx.shadowColor = 'rgba(242,54,69,.8)'; ctx.shadowBlur = 8; } else ctx.shadowBlur = 0;
+    ctx.lineWidth = Math.max(1, bw * 0.22);
+    ctx.beginPath(); ctx.moveTo(x, y(c.h)); ctx.lineTo(x, y(c.l)); ctx.stroke();
+    ctx.fillStyle = up ? '#22e584' : '#f23645';
+    if (isDump) ctx.fillStyle = '#f23645';
+    const yO = y(c.o), yC = y(c.c);
+    const top = Math.min(yO, yC), hgt = Math.max(1.5, Math.abs(yC - yO));
+    ctx.fillRect(x - bw / 2, top, bw, hgt);
+    ctx.shadowBlur = 0;
+  });
+
+  // EMA line
+  ctx.strokeStyle = 'rgba(251,191,36,.75)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  let ema = candles[0].c;
+  candles.forEach((c, i) => {
+    ema = c.c * 0.12 + ema * 0.88;
+    const x = PAD_L + i * slot + slot / 2;
+    i === 0 ? ctx.moveTo(x, y(ema)) : ctx.lineTo(x, y(ema));
+  });
+  ctx.stroke();
+
+  // live price line
+  const ly = y(livePrice);
+  ctx.strokeStyle = 'rgba(242,54,69,.9)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD_L, ly); ctx.lineTo(W - PAD_R, ly); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f23645';
+  ctx.fillRect(W - PAD_R + 2, ly - 9, PAD_R - 6, 18);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 10px JetBrains Mono';
+  ctx.fillText(fmtP(livePrice), W - PAD_R + 7, ly + 3.5);
+
+  // crosshair
+  if (hoverIdx >= 0 && hoverIdx < candles.length) {
+    const c = candles[hoverIdx];
+    const x = PAD_L + hoverIdx * slot + slot / 2;
+    ctx.strokeStyle = 'rgba(148,163,184,.4)'; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, H - PAD_B); ctx.stroke();
+    ctx.setLineDash([]);
+    document.getElementById('ohlc').innerHTML =
+      `O <span class="text-slate-200">${fmtP(c.o)}</span> H <span class="text-slate-200">${fmtP(c.h)}</span> L <span class="text-slate-200">${fmtP(c.l)}</span> C <span class="${c.c >= c.o ? 'text-pump' : 'text-rug'} font-bold">${fmtP(c.c)}</span> <span class="text-slate-500">Vol ${(c.v * 12.4).toFixed(0)}K</span>`;
+  }
+}
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  const plotW = r.width - PAD_R - PAD_L;
+  hoverIdx = Math.floor(((e.clientX - r.left - PAD_L) / plotW) * candles.length);
+  draw();
+});
+canvas.addEventListener('mouseleave', () => { hoverIdx = -1; draw(); });
+window.addEventListener('resize', () => { sizeCanvas(); draw(); });
+
+/* ═══════════════ LIVE SIMULATION ═══════════════ */
+const wallets = ['7xK9…pump 💀', 'Degen…a41f', 'Moon…9c2b', 'Ape…f00d', 'Rekt…b3ef', 'Hop…11ab', 'Bag…77cc', 'Snipe…e90a'];
+function randTx(isInit) {
+  const r = Math.random();
+  let type;
+  if (r < 0.06) type = 'BUY';
+  else if (r < 0.72) type = 'SELL';
+  else if (r < 0.9) type = 'FAILED';
+  else type = 'DEV DUMP';
+  const sol = type === 'DEV DUMP' ? (20 + Math.random() * 180) : (Math.random() * Math.random() * 14 + 0.05);
+  const rug = sol * 242000 * (0.9 + Math.random() * 0.2);
+  return { type, sol, rug, price: livePrice * (0.97 + Math.random() * 0.06), w: type === 'DEV DUMP' ? wallets[0] : wallets[1 + Math.floor(Math.random() * (wallets.length - 1))], t: isInit ? `${Math.floor(Math.random() * 59)}s` : 'now' };
+}
+function txRow(tx, isNew) {
+  const color = tx.type === 'BUY' ? 'text-pump' : tx.type === 'FAILED' ? 'text-amber-400' : 'text-rug';
+  const badge = tx.type === 'BUY' ? 'bg-pump/15 border-pump/40 text-pump' : tx.type === 'FAILED' ? 'bg-amber-400/10 border-amber-400/40 text-amber-300' : 'bg-rug/15 border-rug/40 text-rug';
+  return `<div class="grid grid-cols-6 px-4 py-2 font-mono text-xs num items-center ${isNew ? 'tx-row' : ''} hover:bg-card/60 transition">
+    <span class="col-span-1"><span class="px-2 py-0.5 rounded-md border text-[10px] font-bold ${badge}">${tx.type === 'DEV DUMP' ? '💀 DUMP' : tx.type}</span></span>
+    <span class="col-span-1 text-right text-slate-200">${tx.sol < 1 ? tx.sol.toFixed(3) : tx.sol.toFixed(2)}</span>
+    <span class="col-span-1 text-right text-slate-400">${tx.rug > 1000 ? (tx.rug / 1000).toFixed(1) + 'K' : tx.rug.toFixed(0)}</span>
+    <span class="col-span-1 text-right ${color}">${fmtP(tx.price)}</span>
+    <span class="col-span-1 text-right text-slate-500 hidden sm:block">${tx.w}</span>
+    <span class="col-span-1 text-right text-slate-500">${tx.t}</span>
+  </div>`;
+}
+function seedFeed() {
+  const feed = document.getElementById('txFeed');
+  let html = '';
+  for (let i = 0; i < 18; i++) html = txRow(randTx(true)) + html;
+  feed.innerHTML = html;
+}
+function streamTx() {
+  const feed = document.getElementById('txFeed');
+  const div = document.createElement('div');
+  div.innerHTML = txRow(randTx(false), true);
+  feed.prepend(div.firstChild);
+  while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+  // age the "now"
+  [...feed.children].forEach((row, i) => { if (i > 0 && i < 6) { const t = row.children[5]; if (t.textContent === 'now') t.textContent = (i * 2) + 's'; } });
+}
+function tickPrice() {
+  // dead-cat chop near zero, slow bleed
+  livePrice = Math.max(RUG_PRICE * 0.55, livePrice * (1 + (Math.random() - 0.53) * 0.03));
+  const last = candles[candles.length - 1];
+  last.c = livePrice; last.h = Math.max(last.h, livePrice); last.l = Math.min(last.l, livePrice); last.v += Math.random() * 2;
+  document.getElementById('livePrice').textContent = fmtP(livePrice);
+  const chg = ((livePrice / ATH) - 1) * 100;
+  document.getElementById('liveChange').textContent = `−${Math.abs(chg).toFixed(2)}%`;
+  document.getElementById('statMcap').textContent = '$' + Math.round(livePrice * 1e9 / 1000).toLocaleString();
+  document.getElementById('bagValue').textContent = '$' + (500 * livePrice / ATH).toFixed(2);
+  draw();
+}
+// rug timer counts UP since rug
+const rugAt = Date.now() - (5 * 3600 + 23 * 60 + 41) * 1000;
+setInterval(() => {
+  const s = Math.floor((Date.now() - rugAt) / 1000);
+  const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor(s % 3600 / 60)).padStart(2, '0'), ss = String(s % 60).padStart(2, '0');
+  document.getElementById('rugTimer').textContent = `${h}:${m}:${ss}`;
+}, 1000);
+
+function replayRug() {
+  toast('⏪ Replaying the rug… watch the red canyon');
+  candles = genCandles();
+  const full = [...candles];
+  const cutAt = rugMoment - 6;
+  candles = full.slice(0, cutAt);
+  draw();
+  let i = cutAt;
+  const iv = setInterval(() => {
+    candles.push(full[i]); i++;
+    livePrice = candles[candles.length - 1].c;
+    document.getElementById('livePrice').textContent = fmtP(livePrice);
+    draw();
+    if (i >= full.length) { clearInterval(iv); toast('💀 And just like that… −99.4%'); }
+  }, 90);
+}
+
+/* ═══════════════ TRADE PANEL ═══════════════ */
+function setSide(s) {
+  side = s;
+  const b = document.getElementById('buyTab'), sl = document.getElementById('sellTab'), btn = document.getElementById('tradeBtn');
+  if (s === 'buy') {
+    b.className = 'py-2.5 rounded-lg font-display font-700 text-sm bg-pump text-emerald-950 transition';
+    sl.className = 'py-2.5 rounded-lg font-display font-700 text-sm text-slate-400 hover:text-white transition';
+    btn.className = 'w-full py-3.5 rounded-xl font-display font-700 bg-gradient-to-r from-pump to-emerald-400 text-emerald-950 hover:brightness-110 active:scale-[.99] transition shadow-lg shadow-pump/20';
+    btn.textContent = 'BUY $RUG';
+  } else {
+    sl.className = 'py-2.5 rounded-lg font-display font-700 text-sm bg-rug text-white transition';
+    b.className = 'py-2.5 rounded-lg font-display font-700 text-sm text-slate-400 hover:text-white transition';
+    btn.className = 'w-full py-3.5 rounded-xl font-display font-700 bg-gradient-to-r from-rug to-orange-500 text-white hover:brightness-110 active:scale-[.99] transition shadow-lg shadow-rug/25';
+    btn.textContent = 'SELL $RUG';
+  }
+  calcReceive();
+}
+function setAmt(v) { document.getElementById('payAmt').value = v; calcReceive(); }
+function calcReceive() {
+  const amt = parseFloat(document.getElementById('payAmt').value) || 0;
+  const out = side === 'buy' ? amt * 242000 : amt * 0.0000041 / 142;
+  document.getElementById('receiveAmt').textContent = side === 'buy'
+    ? `${Math.round(out).toLocaleString()} $RUG`
+    : `${out.toFixed(6)} SOL`;
+}
+function tryTrade() {
+  if (side === 'buy') toast('❌ Transaction failed: liquidity pool is empty (dev took it)');
+  else toast('❌ Sell reverted: 99% tax — honeypot confirmed 🍯');
+}
+
+/* ═══════════════ HOLDERS ═══════════════ */
+const holders = [
+  ['7xK9…pump', 'DEV 💀', 0, 'dumped 100%'],
+  ['Raydium LP', 'POOL 🏊', 0, 'removed'],
+  ['Bag…77cc', 'whale 🐳', 8.4, '−$212K'],
+  ['Degen…a41f', '', 4.1, '−$96K'],
+  ['Moon…9c2b', '', 2.8, '−$61K'],
+  ['+3,407 others', 'rekt 🤡', 84.7, 'holding dust'],
+];
+document.getElementById('holders').innerHTML = holders.map(([w, tag, pct, note]) => `
+  <div>
+    <div class="flex justify-between items-center mb-1">
+      <span class="font-mono text-xs"><span class="text-slate-200 font-bold">${w}</span> <span class="text-slate-500">${tag}</span></span>
+      <span class="font-mono text-xs ${pct === 0 ? 'text-rug font-bold' : 'text-slate-400'} num">${pct === 0 ? note : pct + '% <span class="text-rug">' + note + '</span>'}</span>
+    </div>
+    <div class="h-1.5 rounded-full bg-ink overflow-hidden"><div class="h-full rounded-full ${pct === 0 ? 'bg-rug' : 'bg-gradient-to-r from-slate-500 to-slate-400'}" style="width:${Math.max(pct, pct === 0 ? 100 : 2)}%"></div></div>
+  </div>`).join('');
+
+/* ═══════════════ TIMEFRAMES / TOAST / INIT ═══════════════ */
+document.querySelectorAll('.tf-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tf-btn').forEach(x => x.classList.remove('tf-active'));
+  b.classList.add('tf-active');
+  toast(`Switched to ${b.dataset.tf} — still rugged on every timeframe 💀`);
+}));
+let toastTO;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('opacity-0');
+  clearTimeout(toastTO);
+  toastTO = setTimeout(() => t.classList.add('opacity-0'), 2600);
+}
+candles = genCandles();
+livePrice = candles[candles.length - 1].c;
+sizeCanvas(); draw(); seedFeed(); calcReceive();
+setInterval(tickPrice, 1200);
+setInterval(streamTx, 1700);
+</script>
+</body>
+</html>
