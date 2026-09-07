@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NOVA Wallet — $30,000.00 Portfolio</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        display: ['Space Grotesk', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      colors: { ink: '#060913', panel: '#0b1120', card: '#101828', line: '#1c2740', nova: '#7c5cff', mint: '#2ee6a8' }
+    }
+  }
+}
+</script>
+<style>
+  body { background: #060913; font-family: 'Inter', sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #22304d; border-radius: 8px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .glass { background: rgba(16,24,40,.78); backdrop-filter: blur(16px); }
+  @keyframes aurora { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(40px,-30px) scale(1.15); } 66% { transform: translate(-30px,25px) scale(.95); } }
+  .blob { animation: aurora 14s ease-in-out infinite; filter: blur(90px); opacity: .35; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .rise { animation: riseIn .5s ease-out both; }
+  @keyframes pulseDot { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(46,230,168,.5);} 50% { opacity: .7; box-shadow: 0 0 0 6px rgba(46,230,168,0);} }
+  .online-dot { animation: pulseDot 2s infinite; }
+  @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+  .balance-shimmer { background: linear-gradient(110deg, #fff 30%, #b9a8ff 45%, #fff 60%); background-size: 400px 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 5s linear infinite; }
+  .nav-active { background: linear-gradient(135deg, rgba(124,92,255,.22), rgba(124,92,255,.06)); border-color: rgba(124,92,255,.45) !important; color: #fff !important; }
+  .tf-active { background: #7c5cff !important; color: #fff !important; font-weight: 700; }
+  .asset-row { transition: all .18s ease; }
+  .asset-row:hover { background: rgba(124,92,255,.07); transform: translateX(3px); }
+  canvas { cursor: crosshair; }
+  .modal-bg { background: rgba(3,5,10,.75); backdrop-filter: blur(6px); }
+  input[type=number]::-webkit-inner-spin-button { display: none; }
+</style>
+</head>
+<body class="text-slate-200 min-h-screen relative overflow-x-hidden">
+
+<!-- ambient background -->
+<div class="fixed inset-0 pointer-events-none z-0">
+  <div class="blob absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full bg-violet-600"></div>
+  <div class="blob absolute top-1/3 -right-40 w-[520px] h-[520px] rounded-full bg-indigo-600" style="animation-delay:-5s"></div>
+  <div class="blob absolute -bottom-40 left-1/3 w-[420px] h-[420px] rounded-full bg-emerald-500" style="animation-delay:-9s;opacity:.18"></div>
+</div>
+
+<div class="relative z-10 flex min-h-screen max-w-[1500px] mx-auto">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="hidden lg:flex flex-col w-60 shrink-0 p-4 gap-1 sticky top-0 h-screen">
+    <div class="flex items-center gap-2.5 px-2 py-4">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-nova via-violet-500 to-fuchsia-500 grid place-items-center font-display font-700 text-xl shadow-lg shadow-nova/40">◈</div>
+      <div>
+        <div class="font-display font-700 text-lg leading-none">NOVA</div>
+        <div class="text-[10px] text-slate-500 font-mono">web3 wallet</div>
+      </div>
+    </div>
+    <nav class="space-y-1 text-sm font-semibold">
+      <a href="#" class="nav-active flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-transparent text-slate-300"><span>🏠</span> Portfolio</a>
+      <a href="#assets" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition"><span>🪙</span> Assets</a>
+      <a href="#activity" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition"><span>⚡</span> Activity</a>
+      <a href="#" onclick="openModal('swapModal');return false;" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition"><span>🔄</span> Swap</a>
+      <a href="#" onclick="toast('Staking dashboard coming soon 🌱');return false;" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition"><span>🌱</span> Earn <span class="ml-auto text-[10px] font-mono bg-mint/15 text-mint px-1.5 py-0.5 rounded">8.2% APY</span></a>
+      <a href="#" onclick="toast('NFT gallery coming soon 🖼️');return false;" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition"><span>🖼️</span> NFTs</a>
+      <a href="index.html" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition"><span>📉</span> Charts <span class="ml-auto text-[10px] font-mono bg-red-500/15 text-red-300 px-1.5 py-0.5 rounded">RUG</span></a>
+    </nav>
+    <div class="flex-1"></div>
+    <!-- security score -->
+    <div class="glass border border-line rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold">🛡️ Security</span>
+        <span class="text-xs font-mono font-bold text-mint">98/100</span>
+      </div>
+      <div class="h-2 rounded-full bg-ink overflow-hidden"><div class="h-full w-[98%] bg-gradient-to-r from-mint to-emerald-400 rounded-full"></div></div>
+      <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">Hardware key connected • Scam shield on • 2 approvals revoked this week</p>
+    </div>
+    <div class="glass border border-line rounded-2xl p-3 mt-2 flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-amber-300 to-pink-500 grid place-items-center font-bold text-ink text-sm">M</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-bold truncate">mo.degen</div>
+        <button onclick="copyAddr()" class="text-[11px] font-mono text-slate-500 hover:text-nova transition">7xK9…4vQ2 📋</button>
+      </div>
+      <span class="online-dot w-2.5 h-2.5 rounded-full bg-mint"></span>
+    </div>
+  </aside>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <main class="flex-1 min-w-0 p-4 md:p-6 space-y-4 md:space-y-5">
+
+    <!-- topbar -->
+    <div class="flex items-center gap-2 flex-wrap rise">
+      <div class="lg:hidden flex items-center gap-2 mr-1">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-nova to-fuchsia-500 grid place-items-center font-bold">◈</div>
+        <span class="font-display font-700">NOVA</span>
+      </div>
+      <div class="flex gap-1.5 text-xs font-bold">
+        <button class="net-btn px-3 py-2 rounded-xl bg-nova/20 border border-nova/50 text-white" onclick="setNet(this,'All networks')">🌐 All</button>
+        <button class="net-btn px-3 py-2 rounded-xl bg-panel border border-line text-slate-400 hover:text-white transition" onclick="setNet(this,'Solana')">◎ Solana</button>
+        <button class="net-btn px-3 py-2 rounded-xl bg-panel border border-line text-slate-400 hover:text-white transition hidden sm:block" onclick="setNet(this,'Ethereum')">⟠ Ethereum</button>
+        <button class="net-btn px-3 py-2 rounded-xl bg-panel border border-line text-slate-400 hover:text-white transition hidden sm:block" onclick="setNet(this,'Bitcoin')">₿ Bitcoin</button>
+      </div>
+      <div class="flex-1"></div>
+      <button onclick="toast('🔔 3 alerts: SOL +5%, USDC received, approval revoked')" class="relative w-10 h-10 grid place-items-center rounded-xl bg-panel border border-line hover:border-nova/50 transition">🔔<span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-400"></span></button>
+      <button onclick="openModal('receiveModal')" class="w-10 h-10 grid place-items-center rounded-xl bg-panel border border-line hover:border-nova/50 transition">📥</button>
+      <button onclick="toggleHide()" id="eyeBtn" class="w-10 h-10 grid place-items-center rounded-xl bg-panel border border-line hover:border-nova/50 transition">👁️</button>
+    </div>
+
+    <!-- balance hero -->
+    <section class="rise relative overflow-hidden rounded-3xl border border-nova/30 bg-gradient-to-br from-[#141b3d] via-panel to-panel p-6 md:p-8" style="animation-delay:.05s">
+      <div class="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-nova/25 blur-[80px]"></div>
+      <div class="relative flex flex-wrap items-end gap-6">
+        <div class="flex-1 min-w-[220px]">
+          <div class="flex items-center gap-2 text-sm text-slate-400 font-semibold">
+            Total balance
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-mint/10 border border-mint/30 text-mint">● synced</span>
+          </div>
+          <div id="totalBalance" class="balance-shimmer font-display font-700 text-5xl md:text-6xl mt-1 num tracking-tight">$30,000.00</div>
+          <div class="flex items-center gap-2 mt-2 flex-wrap">
+            <span id="pnlBadge" class="font-mono text-sm font-bold text-mint bg-mint/10 border border-mint/25 px-2.5 py-1 rounded-lg num">+$2,145.32 (+7.70%)</span>
+            <span class="text-xs text-slate-500 font-mono" id="tfLabel">past 24 hours</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-2.5">
+          <button onclick="openModal('sendModal')" class="flex flex-col items-center gap-1.5 px-4 md:px-6 py-3.5 rounded-2xl bg-gradient-to-b from-nova to-violet-700 font-bold text-sm shadow-lg shadow-nova/30 hover:brightness-110 active:scale-95 transition"><span class="text-xl">📤</span>Send</button>
+          <button onclick="openModal('receiveModal')" class="flex flex-col items-center gap-1.5 px-4 md:px-6 py-3.5 rounded-2xl bg-card border border-line font-bold text-sm hover:border-mint/50 active:scale-95 transition"><span class="text-xl">📥</span>Receive</button>
+          <button onclick="openModal('swapModal')" class="flex flex-col items-center gap-1.5 px-4 md:px-6 py-3.5 rounded-2xl bg-card border border-line font-bold text-sm hover:border-nova/50 active:scale-95 transition"><span class="text-xl">🔄</span>Swap</button>
+          <button onclick="toast('💳 On-ramp: $500 weekly limit • 0.9% fee')" class="flex flex-col items-center gap-1.5 px-4 md:px-6 py-3.5 rounded-2xl bg-card border border-line font-bold text-sm hover:border-amber-400/50 active:scale-95 transition"><span class="text-xl">💳</span>Buy</button>
+        </div>
+      </div>
+      <!-- chart -->
+      <div class="relative mt-5">
+        <div class="flex items-center gap-1.5 mb-2">
+          <div class="flex gap-1 text-xs font-mono" id="ptf">
+            <button data-d="1D" class="px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition tf-active">24H</button>
+            <button data-d="1W" class="px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition">1W</button>
+            <button data-d="1M" class="px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition">1M</button>
+            <button data-d="1Y" class="px-3 py-1.5 rounded-lg bg-card border border-line text-slate-400 hover:text-white transition">1Y</button>
+          </div>
+          <div class="flex-1"></div>
+          <span id="chartHover" class="font-mono text-xs text-slate-400 num"></span>
+        </div>
+        <canvas id="pchart" class="w-full block" style="height:220px"></canvas>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-5">
+      <!-- assets -->
+      <section id="assets" class="xl:col-span-2 glass border border-line rounded-3xl overflow-hidden rise" style="animation-delay:.1s">
+        <div class="flex items-center gap-3 px-5 pt-4 pb-3 flex-wrap">
+          <h2 class="font-display font-700 text-lg">Assets</h2>
+          <span class="text-xs font-mono text-slate-500">7 tokens • 3 networks</span>
+          <div class="flex-1"></div>
+          <div class="flex items-center gap-2 bg-ink border border-line rounded-xl px-3 py-1.5 w-48 focus-within:border-nova/50 transition">
+            <span class="text-xs">🔍</span>
+            <input id="assetSearch" oninput="renderAssets()" placeholder="Search tokens" class="bg-transparent outline-none text-xs w-full placeholder:text-slate-600" />
+          </div>
+        </div>
+        <div id="assetList" class="divide-y divide-line/50 pb-2"></div>
+      </section>
+
+      <div class="space-y-4 md:space-y-5">
+        <!-- allocation -->
+        <section class="glass border border-line rounded-3xl p-5 rise" style="animation-delay:.15s">
+          <h2 class="font-display font-700 mb-3">Allocation</h2>
+          <div class="flex items-center gap-4">
+            <canvas id="donut" width="140" height="140" class="shrink-0"></canvas>
+            <div class="space-y-2 text-xs flex-1" id="allocList"></div>
+          </div>
+        </section>
+
+        <!-- quick swap -->
+        <section class="rounded-3xl p-5 border border-nova/30 bg-gradient-to-br from-nova/15 to-transparent rise" style="animation-delay:.2s">
+          <h2 class="font-display font-700 mb-3">⚡ Quick swap</h2>
+          <div class="bg-ink/80 border border-line rounded-2xl p-3 flex items-center gap-2">
+            <input id="qFrom" type="number" value="1" min="0" oninput="qSwap()" class="bg-transparent outline-none font-mono font-bold text-lg w-full num" />
+            <span class="text-xs font-bold bg-card border border-line px-2.5 py-1.5 rounded-xl">◎ SOL</span>
+          </div>
+          <div class="flex justify-center -my-1.5 relative z-10"><div class="w-8 h-8 rounded-full bg-nova grid place-items-center text-sm border-4 border-[#0d1330]">⇅</div></div>
+          <div class="bg-ink/80 border border-line rounded-2xl p-3 flex items-center gap-2">
+            <div id="qTo" class="font-mono font-bold text-lg w-full num text-mint">142.18</div>
+            <span class="text-xs font-bold bg-card border border-line px-2.5 py-1.5 rounded-xl">$ USDC</span>
+          </div>
+          <button onclick="toast('🔄 Swap quoted: 1 SOL → 142.18 USDC • 0.3% fee')" class="w-full mt-3 py-3 rounded-2xl font-bold text-sm bg-gradient-to-r from-nova to-fuchsia-500 shadow-lg shadow-nova/30 hover:brightness-110 active:scale-[.99] transition">Review swap</button>
+        </section>
+      </div>
+    </div>
+
+    <!-- activity -->
+    <section id="activity" class="glass border border-line rounded-3xl overflow-hidden rise" style="animation-delay:.25s">
+      <div class="flex items-center gap-3 px-5 py-4 border-b border-line">
+        <h2 class="font-display font-700 text-lg">Recent activity</h2>
+        <div class="flex-1"></div>
+        <button onclick="toast('📄 Full history exported (CSV)')" class="text-xs font-bold px-3 py-2 rounded-xl bg-card border border-line hover:border-nova/50 transition">Export ⬇</button>
+      </div>
+      <div id="actList" class="divide-y divide-line/50"></div>
+    </section>
+
+    <footer class="text-center text-xs text-slate-600 font-mono pb-6 pt-1">NOVA Wallet demo — simulated balances for design preview. Not real funds. ✨</footer>
+  </main>
+</div>
+
+<!-- mobile bottom nav -->
+<nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 glass border-t border-line flex justify-around py-2.5 text-[10px] font-bold text-slate-400">
+  <a href="#" class="flex flex-col items-center gap-0.5 text-white"><span class="text-lg">🏠</span>Home</a>
+  <a href="#assets" class="flex flex-col items-center gap-0.5"><span class="text-lg">🪙</span>Assets</a>
+  <button onclick="openModal('swapModal')" class="flex flex-col items-center gap-0.5"><span class="text-lg">🔄</span>Swap</button>
+  <a href="#activity" class="flex flex-col items-center gap-0.5"><span class="text-lg">⚡</span>Activity</a>
+  <a href="index.html" class="flex flex-col items-center gap-0.5"><span class="text-lg">📉</span>Charts</a>
+</nav>
+<div class="h-16 lg:hidden"></div>
+
+<!-- ══════════ SEND MODAL ══════════ -->
+<div id="sendModal" class="hidden fixed inset-0 z-50 modal-bg grid place-items-center p-4" onclick="if(event.target===this)closeModal('sendModal')">
+  <div class="rise bg-panel border border-line rounded-3xl p-6 w-full max-w-md">
+    <div class="flex items-center justify-between mb-4"><h3 class="font-display font-700 text-xl">📤 Send</h3><button onclick="closeModal('sendModal')" class="w-8 h-8 rounded-lg bg-card border border-line hover:border-red-400/50 transition">✕</button></div>
+    <label class="text-xs font-bold text-slate-400">ASSET</label>
+    <select id="sendAsset" class="w-full mt-1 mb-3 bg-ink border border-line rounded-xl px-3 py-3 text-sm font-bold outline-none focus:border-nova/60">
+      <option>◎ Solana (SOL)</option><option>⟠ Ethereum (ETH)</option><option>₿ Bitcoin (BTC)</option><option>$ USD Coin (USDC)</option>
+    </select>
+    <label class="text-xs font-bold text-slate-400">TO ADDRESS</label>
+    <input id="sendTo" placeholder="Paste wallet address…" class="w-full mt-1 mb-3 bg-ink border border-line rounded-xl px-3 py-3 text-sm font-mono outline-none focus:border-nova/60 placeholder:text-slate-600" />
+    <label class="text-xs font-bold text-slate-400">AMOUNT</label>
+    <div class="flex items-center gap-2 mt-1 mb-1.5">
+      <input id="sendAmt" type="number" placeholder="0.00" class="flex-1 bg-ink border border-line rounded-xl px-3 py-3 font-mono font-bold outline-none focus:border-nova/60 placeholder:text-slate-600" />
+      <button onclick="document.getElementById('sendAmt').value='12.5'" class="text-xs font-bold px-3 py-3 rounded-xl bg-card border border-line hover:border-nova/50">MAX</button>
+    </div>
+    <div class="flex justify-between text-xs font-mono text-slate-500 mb-4"><span>Network fee ≈ $0.04</span><span>Arrives in ~12s</span></div>
+    <button onclick="doSend()" class="w-full py-3.5 rounded-2xl font-bold bg-gradient-to-r from-nova to-fuchsia-500 shadow-lg shadow-nova/30 hover:brightness-110 active:scale-[.99] transition">Confirm send</button>
+  </div>
+</div>
+
+<!-- ══════════ RECEIVE MODAL ══════════ -->
+<div id="receiveModal" class="hidden fixed inset-0 z-50 modal-bg grid place-items-center p-4" onclick="if(event.target===this)closeModal('receiveModal')">
+  <div class="rise bg-panel border border-line rounded-3xl p-6 w-full max-w-sm text-center">
+    <div class="flex items-center justify-between mb-4"><h3 class="font-display font-700 text-xl">📥 Receive</h3><button onclick="closeModal('receiveModal')" class="w-8 h-8 rounded-lg bg-card border border-line hover:border-red-400/50 transition">✕</button></div>
+    <div class="bg-white rounded-2xl p-4 inline-block"><div id="qr" class="grid grid-cols-12 gap-[2px] w-44 h-44"></div></div>
+    <div class="mt-3 text-xs text-slate-400 font-semibold">Your Solana address</div>
+    <div class="font-mono text-xs bg-ink border border-line rounded-xl px-3 py-2.5 mt-1 break-all select-all">7xK9vB2mQp4Rt8Wc3Nd6Fg1Hj0Lz5Xc4vQ2</div>
+    <button onclick="copyAddr()" class="w-full mt-3 py-3 rounded-2xl font-bold text-sm bg-card border border-line hover:border-mint/50 transition">📋 Copy address</button>
+    <p class="text-[11px] text-amber-300/90 mt-2">⚠️ Only send SOL & SPL tokens to this address</p>
+  </div>
+</div>
+
+<!-- ══════════ SWAP MODAL ══════════ -->
+<div id="swapModal" class="hidden fixed inset-0 z-50 modal-bg grid place-items-center p-4" onclick="if(event.target===this)closeModal('swapModal')">
+  <div class="rise bg-panel border border-line rounded-3xl p-6 w-full max-w-md">
+    <div class="flex items-center justify-between mb-4"><h3 class="font-display font-700 text-xl">🔄 Swap</h3><button onclick="closeModal('swapModal')" class="w-8 h-8 rounded-lg bg-card border border-line hover:border-red-400/50 transition">✕</button></div>
+    <div class="bg-ink border border-line rounded-2xl p-4">
+      <div class="text-[11px] font-bold text-slate-500 mb-1">FROM</div>
+      <div class="flex items-center gap-2"><input id="swFrom" type="number" value="2.5" class="bg-transparent outline-none font-mono font-bold text-2xl w-full num" oninput="calcSwap()" /><span class="font-bold text-sm bg-card border border-line px-3 py-2 rounded-xl whitespace-nowrap">◎ SOL</span></div>
+      <div class="text-xs font-mono text-slate-500 mt-1">≈ $<span id="swFromUsd">355.45</span></div>
+    </div>
+    <div class="flex justify-center -my-2 relative z-10"><div class="w-9 h-9 rounded-full bg-card border border-line grid place-items-center">⇅</div></div>
+    <div class="bg-ink border border-line rounded-2xl p-4">
+      <div class="text-[11px] font-bold text-slate-500 mb-1">TO</div>
+      <div class="flex items-center gap-2"><div id="swTo" class="font-mono font-bold text-2xl w-full num text-mint">354.38</div><span class="font-bold text-sm bg-card border border-line px-3 py-2 rounded-xl whitespace-nowrap">$ USDC</span></div>
+      <div class="text-xs font-mono text-slate-500 mt-1">1 SOL = 142.18 USDC</div>
+    </div>
+    <div class="flex justify-between text-xs font-mono text-slate-500 my-3"><span>Fee 0.3%</span><span>Slippage 0.5%</span><span class="text-mint">Best route: Jupiter</span></div>
+    <button onclick="toast('✅ Swap simulated: 2.5 SOL → 354.38 USDC');closeModal('swapModal')" class="w-full py-3.5 rounded-2xl font-bold bg-gradient-to-r from-mint to-emerald-400 text-emerald-950 shadow-lg shadow-mint/20 hover:brightness-110 active:scale-[.99] transition">Confirm swap</button>
+  </div>
+</div>
+
+<div id="toast" class="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl bg-card/95 border border-nova/40 text-sm font-semibold shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-[60] whitespace-nowrap"></div>
+
+<script>
+/* ═══════════════ DATA — sums to exactly $30,000 ═══════════════ */
+const TOTAL = 30000;
+const assets = [
+  { sym: 'SOL',  name: 'Solana',    icon: '◎', grad: 'from-violet-500 to-emerald-400', price: 142.18,  chg: +5.42, amt: 63.29,  val: 9000,  net: 'Solana' },
+  { sym: 'ETH',  name: 'Ethereum',  icon: '⟠', grad: 'from-indigo-400 to-blue-600',     price: 3241.60, chg: +2.18, amt: 1.697,  val: 5500,  net: 'Ethereum' },
+  { sym: 'BTC',  name: 'Bitcoin',   icon: '₿', grad: 'from-amber-400 to-orange-600',    price: 97431,   chg: +1.06, amt: 0.0513, val: 5000,  net: 'Bitcoin' },
+  { sym: 'USDC', name: 'USD Coin',  icon: '$', grad: 'from-sky-400 to-blue-500',        price: 1.00,    chg: +0.01, amt: 6000,   val: 6000,  net: 'Solana' },
+  { sym: 'JUP',  name: 'Jupiter',   icon: '🪐', grad: 'from-emerald-400 to-teal-600',    price: 0.91,    chg: +8.64, amt: 1648.35, val: 1500, net: 'Solana' },
+  { sym: 'BONK', name: 'Bonk',      icon: '🐕', grad: 'from-amber-500 to-red-500',      price: 0.0000214, chg: +12.30, amt: 93457943, val: 2000, net: 'Solana' },
+  { sym: 'PYTH', name: 'Pyth',      icon: '🔮', grad: 'from-fuchsia-500 to-purple-700', price: 0.34,    chg: -2.41, amt: 1470.59, val: 500,  net: 'Solana' },
+];
+let hidden = false;
+const money = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const price = v => v >= 1000 ? '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : v >= 1 ? '$' + v.toFixed(2) : '$' + v.toFixed(v < 0.0001 ? 7 : 4);
+
+/* ═══════════════ ASSETS ═══════════════ */
+function sparkSVG(seed, up) {
+  let pts = [], v = 50;
+  for (let x = 0; x <= 100; x += 5) { v += (Math.sin(x * seed) + (Math.random() - .45)) * 6; v = Math.max(6, Math.min(56, v)); pts.push(`${x},${62 - v}`); }
+  const c = up ? '#2ee6a8' : '#f6616f';
+  return `<svg width="96" height="36" viewBox="0 0 100 68" fill="none"><polyline points="${pts.join(' ')}" stroke="${c}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+function renderAssets() {
+  const q = (document.getElementById('assetSearch').value || '').toLowerCase();
+  document.getElementById('assetList').innerHTML = assets
+    .filter(a => (a.sym + a.name).toLowerCase().includes(q))
+    .map((a, i) => `
+    <div class="asset-row flex items-center gap-3.5 px-5 py-3.5 cursor-pointer" onclick="toast('${a.icon} ${a.name} — ${money(a.val)} • ${a.amt.toLocaleString()} ${a.sym}')">
+      <div class="w-11 h-11 rounded-2xl bg-gradient-to-br ${a.grad} grid place-items-center text-xl font-bold text-white shadow-lg shrink-0">${a.icon}</div>
+      <div class="min-w-0">
+        <div class="font-bold text-[15px]">${a.name} <span class="text-slate-500 font-mono text-xs font-medium">${a.sym}</span></div>
+        <div class="text-[11px] font-mono text-slate-500">${price(a.price)} • ${a.net}</div>
+      </div>
+      <div class="flex-1"></div>
+      <div class="hidden md:block opacity-80">${sparkSVG(i + 1.7, a.chg >= 0)}</div>
+      <div class="text-right">
+        <div class="font-mono font-bold num">${hidden ? '••••••' : money(a.val)}</div>
+        <div class="font-mono text-xs font-bold num ${a.chg >= 0 ? 'text-mint' : 'text-[#f6616f]'}">${a.chg >= 0 ? '+' : ''}${a.chg.toFixed(2)}%</div>
+      </div>
+    </div>`).join('') || `<div class="px-5 py-8 text-center text-sm text-slate-500">No tokens match “${q}”</div>`;
+}
+
+/* ═══════════════ ALLOCATION DONUT ═══════════════ */
+function drawDonut() {
+  const cv = document.getElementById('donut'), cx = cv.getContext('2d');
+  const colors = ['#7c5cff', '#2ee6a8', '#f5a623', '#38bdf8', '#34d399', '#fb7185', '#c084fc'];
+  let ang = -Math.PI / 2;
+  cx.clearRect(0, 0, 140, 140);
+  assets.forEach((a, i) => {
+    const slice = (a.val / TOTAL) * Math.PI * 2;
+    cx.beginPath(); cx.arc(70, 70, 56, ang + 0.02, ang + slice - 0.02);
+    cx.arc(70, 70, 38, ang + slice - 0.02, ang + 0.02, true);
+    cx.closePath(); cx.fillStyle = colors[i % colors.length]; cx.fill();
+    ang += slice;
+  });
+  cx.fillStyle = '#fff'; cx.font = 'bold 17px Space Grotesk'; cx.textAlign = 'center';
+  cx.fillText(hidden ? '•••' : '100%', 70, 68);
+  cx.fillStyle = '#64748b'; cx.font = '10px JetBrains Mono'; cx.fillText('7 assets', 70, 84);
+  document.getElementById('allocList').innerHTML = assets.slice(0, 5).map((a, i) => `
+    <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background:${colors[i]}"></span>
+    <span class="font-bold">${a.sym}</span><span class="flex-1"></span><span class="font-mono text-slate-400 num">${(a.val / TOTAL * 100).toFixed(1)}%</span></div>`).join('') +
+    `<div class="text-slate-500 font-mono">+${assets.length - 5} more…</div>`;
+}
+
+/* ═══════════════ PORTFOLIO CHART — always ends at $30,000 ═══════════════ */
+const pc = document.getElementById('pchart'), px = pc.getContext('2d');
+let pdata = [], pHover = -1, curRange = '1D';
+const ranges = { '1D': [96, 27854.68, 'past 24 hours'], '1W': [120, 26120.44, 'past 7 days'], '1M': [140, 22980.10, 'past 30 days'], '1Y': [160, 12480.55, 'past 12 months'] };
+function genPortfolio(range) {
+  const [n, start] = ranges[range];
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const trend = start + (TOTAL - start) * Math.pow(t, 1.35);
+    const wave = Math.sin(t * 9 + range.length) * (TOTAL - start) * 0.03 * (1 - t * 0.5);
+    const noise = (Math.random() - 0.48) * (TOTAL - start) * 0.02;
+    pts.push(i === n - 1 ? TOTAL : Math.max(start * 0.97, trend + wave + noise));
+  }
+  return pts;
+}
+function drawPchart() {
+  const W = pc.getBoundingClientRect().width, H = 220, dpr = window.devicePixelRatio || 1;
+  pc.width = W * dpr; pc.height = H * dpr; px.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const lo = Math.min(...pdata) * 0.998, hi = Math.max(...pdata) * 1.002;
+  const X = i => 4 + (i / (pdata.length - 1)) * (W - 70);
+  const Y = v => 10 + (1 - (v - lo) / (hi - lo)) * (H - 30);
+  px.clearRect(0, 0, W, H);
+  // grid + labels
+  px.font = '10px JetBrains Mono'; px.fillStyle = '#4b5a77';
+  for (let g = 0; g <= 4; g++) {
+    const v = lo + (hi - lo) * g / 4, yy = Math.round(Y(v)) + .5;
+    px.strokeStyle = 'rgba(28,39,64,.8)'; px.beginPath(); px.moveTo(0, yy); px.lineTo(W - 62, yy); px.stroke();
+    px.fillText('$' + (v / 1000).toFixed(1) + 'k', W - 56, yy + 3);
+  }
+  // area fill
+  const grad = px.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(124,92,255,.35)'); grad.addColorStop(1, 'rgba(124,92,255,0)');
+  px.beginPath(); px.moveTo(X(0), Y(pdata[0]));
+  pdata.forEach((v, i) => px.lineTo(X(i), Y(v)));
+  px.lineTo(X(pdata.length - 1), H - 8); px.lineTo(X(0), H - 8); px.closePath();
+  px.fillStyle = grad; px.fill();
+  // line
+  px.beginPath(); px.moveTo(X(0), Y(pdata[0]));
+  pdata.forEach((v, i) => px.lineTo(X(i), Y(v)));
+  px.strokeStyle = '#8f76ff'; px.lineWidth = 2.5; px.lineJoin = 'round'; px.shadowColor = 'rgba(124,92,255,.6)'; px.shadowBlur = 12; px.stroke();
+  px.shadowBlur = 0;
+  // end dot
+  const ex = X(pdata.length - 1), ey = Y(pdata[pdata.length - 1]);
+  px.beginPath(); px.arc(ex, ey, 5, 0, 7); px.fillStyle = '#2ee6a8'; px.fill();
+  px.beginPath(); px.arc(ex, ey, 9, 0, 7); px.strokeStyle = 'rgba(46,230,168,.4)'; px.lineWidth = 2; px.stroke();
+  // hover
+  if (pHover >= 0) {
+    const v = pdata[pHover];
+    px.strokeStyle = 'rgba(148,163,184,.4)'; px.setLineDash([4, 4]);
+    px.beginPath(); px.moveTo(X(pHover), 8); px.lineTo(X(pHover), H - 8); px.stroke(); px.setLineDash([]);
+    px.beginPath(); px.arc(X(pHover), Y(v), 5, 0, 7); px.fillStyle = '#fff'; px.fill();
+    document.getElementById('chartHover').textContent = hidden ? '••••••' : money(v);
+  }
+}
+pc.addEventListener('mousemove', e => {
+  const r = pc.getBoundingClientRect();
+  pHover = Math.round(((e.clientX - r.left - 4) / (r.width - 74)) * (pdata.length - 1));
+  pHover = Math.max(0, Math.min(pdata.length - 1, pHover));
+  drawPchart();
+});
+pc.addEventListener('mouseleave', () => { pHover = -1; document.getElementById('chartHover').textContent = ''; drawPchart(); });
+function setRange(range) {
+  curRange = range; pdata = genPortfolio(range); drawPchart();
+  const start = ranges[range][1], pnl = TOTAL - start, pct = pnl / start * 100;
+  const badge = document.getElementById('pnlBadge');
+  badge.textContent = hidden ? '••••••••' : `+$${pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (+${pct.toFixed(2)}%)`;
+  document.getElementById('tfLabel').textContent = ranges[range][2];
+}
+document.querySelectorAll('#ptf button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#ptf button').forEach(x => x.classList.remove('tf-active'));
+  b.classList.add('tf-active'); setRange(b.dataset.d);
+}));
+window.addEventListener('resize', drawPchart);
+
+/* ═══════════════ ACTIVITY ═══════════════ */
+const acts = [
+  ['📥', 'Received 2,500 USDC', 'From 9f2K…7hQw • Solana', '+$2,500.00', true, '2m ago'],
+  ['🔄', 'Swapped 1.2 SOL → 170.6 USDC', 'Jupiter • 0.3% fee', '+$170.62', true, '1h ago'],
+  ['📤', 'Sent 0.05 ETH', 'To 0x71…9Bc2 • Ethereum', '−$162.08', false, '3h ago'],
+  ['🌱', 'Staking reward — SOL', 'Marinade • 8.2% APY', '+$4.18', true, '8h ago'],
+  ['📤', 'Sent 50 JUP', 'To Degen…a41f • Solana', '−$45.50', false, 'Yesterday'],
+  ['🔄', 'Swapped 500 USDC → 0.0051 BTC', 'Jupiter • best route', '+$496.80', true, 'Yesterday'],
+  ['🛡️', 'Revoked approval — unknown dApp', 'Security shield', 'Protected', true, '2d ago'],
+];
+document.getElementById('actList').innerHTML = acts.map(([ic, t, s, v, pos, time]) => `
+  <div class="flex items-center gap-3.5 px-5 py-3.5 hover:bg-white/[.02] transition cursor-pointer" onclick="toast('🧾 ${t} — view on explorer')">
+    <div class="w-10 h-10 rounded-2xl bg-card border border-line grid place-items-center text-lg shrink-0">${ic}</div>
+    <div class="min-w-0"><div class="font-bold text-sm truncate">${t}</div><div class="text-[11px] font-mono text-slate-500 truncate">${s}</div></div>
+    <div class="flex-1"></div>
+    <div class="text-right shrink-0"><div class="font-mono font-bold text-sm num ${pos ? 'text-mint' : 'text-slate-200'}">${hidden && v.startsWith('$') || hidden && v.startsWith('+') || hidden && v.startsWith('−') ? '••••' : v}</div><div class="text-[11px] font-mono text-slate-500">${time}</div></div>
+  </div>`).join('');
+
+/* ═══════════════ ACTIONS ═══════════════ */
+function toggleHide() {
+  hidden = !hidden;
+  document.getElementById('totalBalance').textContent = hidden ? '••••••••' : money(TOTAL);
+  document.getElementById('eyeBtn').textContent = hidden ? '🙈' : '👁️';
+  renderAssets(); drawDonut(); setRange(curRange);
+  toast(hidden ? '🙈 Balances hidden' : '👁️ Balances visible');
+}
+function setNet(btn, name) {
+  document.querySelectorAll('.net-btn').forEach(b => b.className = 'net-btn px-3 py-2 rounded-xl bg-panel border border-line text-slate-400 hover:text-white transition');
+  btn.className = 'net-btn px-3 py-2 rounded-xl bg-nova/20 border border-nova/50 text-white';
+  toast(`🌐 Network: ${name} — ${money(TOTAL)} total`);
+}
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') ['sendModal', 'receiveModal', 'swapModal'].forEach(closeModal); });
+function copyAddr() {
+  navigator.clipboard?.writeText('7xK9vB2mQp4Rt8Wc3Nd6Fg1Hj0Lz5Xc4vQ2').catch(() => {});
+  toast('📋 Address copied to clipboard');
+}
+function doSend() {
+  const to = document.getElementById('sendTo').value.trim(), amt = parseFloat(document.getElementById('sendAmt').value);
+  if (!to) return toast('⚠️ Enter a destination address first');
+  if (!amt || amt <= 0) return toast('⚠️ Enter a valid amount');
+  closeModal('sendModal'); toast(`✅ Sent ${amt} ${document.getElementById('sendAsset').value.split('(')[1].replace(')', '')} — simulated, no real funds moved`);
+}
+function qSwap() {
+  const v = parseFloat(document.getElementById('qFrom').value) || 0;
+  document.getElementById('qTo').textContent = (v * 142.18 * 0.997).toFixed(2);
+}
+function calcSwap() {
+  const v = parseFloat(document.getElementById('swFrom').value) || 0;
+  document.getElementById('swFromUsd').textContent = (v * 142.18).toFixed(2);
+  document.getElementById('swTo').textContent = (v * 142.18 * 0.997).toFixed(2);
+}
+// fake QR pattern
+document.getElementById('qr').innerHTML = Array.from({ length: 144 }, (_, i) => {
+  const edge = (r, c) => (r < 4 && c < 4) || (r < 4 && c > 7) || (r > 7 && c < 4);
+  const r = Math.floor(i / 12), c = i % 12;
+  const on = edge(r, c) ? ((r + c) % 3 !== 2) : ((i * 7919 + r * 13 + c * 7) % 5 < 2);
+  return `<div class="${on ? 'bg-slate-900' : 'bg-white'} rounded-[1px]"></div>`;
+}).join('');
+
+let toastTO;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('opacity-0');
+  clearTimeout(toastTO); toastTO = setTimeout(() => t.classList.add('opacity-0'), 2600);
+}
+
+/* live balance shimmer tick — tiny chop around 30k display stays exact */
+setInterval(() => {
+  if (hidden) return;
+  const jitter = TOTAL + (Math.random() - 0.5) * 6;
+  document.getElementById('totalBalance').textContent = money(Math.round(jitter * 100) / 100);
+  setTimeout(() => { if (!hidden) document.getElementById('totalBalance').textContent = money(TOTAL); }, 900);
+}, 6000);
+
+/* init */
+renderAssets(); drawDonut();
+pdata = genPortfolio('1D'); drawPchart(); setRange('1D');
+qSwap(); calcSwap();
+</script>
+</body>
+</html>
